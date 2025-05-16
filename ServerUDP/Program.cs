@@ -20,7 +20,6 @@ class UdpPriceServer
     static Dictionary<string, DateTime> activeClients = new Dictionary<string, DateTime>();
     static Dictionary<string, (int requestCount, DateTime lastRequestTime)> clientRequests = new Dictionary<string, (int, DateTime)>();
     const int requestLimit = 10;
-
     
     static void Main()
     {
