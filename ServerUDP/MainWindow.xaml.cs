@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿
+using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Windows;
@@ -55,7 +57,7 @@ public partial class MainWindow : Window
         {
             udpServer = new UdpClient(150);
             remoteEP = new IPEndPoint(IPAddress.Any, 150);
-
+        
             try
             {
                 while (!token.IsCancellationRequested)
@@ -63,20 +65,18 @@ public partial class MainWindow : Window
                     byte[] data = udpServer.Receive(ref remoteEP);
                     string message = Encoding.UTF8.GetString(data);
                     string response;
-                    
+        
                     if (connectedClients.Add(remoteEP.Address.ToString()))
                     {
-                        Dispatcher.Invoke(() =>
-                        {
-                            AddLog($"Новий клієнт підключився: {remoteEP.Address}");
-                        });
+                        string clientConnectedMessage = $"Новий клієнт підключився: {remoteEP.Address}";
+                        Dispatcher.Invoke(() => AddLog(clientConnectedMessage));
+                        Logger.Log(clientConnectedMessage);
                     }
-                    
-                    Dispatcher.Invoke(() =>
-                    {
-                        AddLog($"[{remoteEP}] Запит: {message}");
-                    });
-
+        
+                    string clientRequestMessage = $"[{remoteEP}] Запит: {message}";
+                    Dispatcher.Invoke(() => AddLog(clientRequestMessage));
+                    Logger.Log(clientRequestMessage);
+        
                     if (partsPrices.TryGetValue(message.ToLower(), out response))
                     {
                         response = $"Ціна на {message}: {response}";
@@ -85,23 +85,26 @@ public partial class MainWindow : Window
                     {
                         response = $"Невідомий компонент: {message}";
                     }
-
+        
                     byte[] responseData = Encoding.UTF8.GetBytes(response);
                     udpServer.Send(responseData, responseData.Length, remoteEP);
-
-                    Dispatcher.Invoke(() =>
-                    {
-                        AddLog($"→ Відповідь: {response}");
-                    });
+        
+                    string serverResponseMessage = $"→ Відповідь для [{remoteEP}]: {response}";
+                    Dispatcher.Invoke(() => AddLog(serverResponseMessage));
+                    Logger.Log(serverResponseMessage);
                 }
             }
             catch (SocketException)
             {
-                Dispatcher.Invoke(() => AddLog("Сервер було зупинено."));
+                string stopMessage = "Сервер було зупинено.";
+                Dispatcher.Invoke(() => AddLog(stopMessage));
+                Logger.Log(stopMessage);
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => AddLog($"Помилка: {ex.Message}"));
+                string errorMessage = $"Помилка: {ex.Message}";
+                Dispatcher.Invoke(() => AddLog(errorMessage));
+                Logger.Log(errorMessage);
             }
         }
 
@@ -114,4 +117,15 @@ public partial class MainWindow : Window
         {
             this.DataContext = new { ServerStatus = status };
         }
+}
+
+public static class Logger
+{
+    private static readonly string logFilePath = "server_log.txt";
+
+    public static void Log(string message)
+    {
+        string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
+        File.AppendAllText(logFilePath, logEntry + Environment.NewLine);
+    }
 }
